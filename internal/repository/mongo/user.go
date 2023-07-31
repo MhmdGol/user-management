@@ -1,11 +1,11 @@
-package nosql
+package mongo
 
 import (
 	"context"
 	"time"
 	"user-management/internal/model"
 	"user-management/internal/repository"
-	"user-management/internal/repository/nosql/nosqlmodel"
+	"user-management/internal/repository/mongo/mongomodel"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -34,13 +34,16 @@ func (ur *UserRepository) Create(u model.User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	err := ur.db.Collection("users").FindOne(ctx, bson.M{"username": u.Username}).Err()
+	filter := bson.M{"username": bson.M{"$eq": u.Username}}
+
+	err := ur.db.Collection("users").FindOne(ctx, filter).Err()
 	if err == nil {
 		ur.logger.Info("User exists already")
 		return err
 	}
+	ur.logger.Info("Safe to insert")
 
-	user := nosqlmodel.User{
+	user := mongomodel.User{
 		Username:       u.Username,
 		Password:       u.Password,
 		TimeOfCreation: time.Now(),
@@ -70,7 +73,7 @@ func (ur *UserRepository) All() ([]model.User, error) {
 	}
 	ur.logger.Info("Read all users to cursor")
 
-	var users []nosqlmodel.User
+	var users []mongomodel.User
 	err = cursor.All(ctx, &users)
 	if err != nil {
 		ur.logger.Info("Read all users from cursor failure")
@@ -99,8 +102,10 @@ func (ur *UserRepository) ReadByUsername(u model.User) (model.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	var user nosqlmodel.User
-	err := ur.db.Collection("users").FindOne(ctx, bson.M{"username": u.Username}).Decode(&user)
+	filter := bson.M{"username": bson.M{"$eq": u.Username}}
+
+	var user mongomodel.User
+	err := ur.db.Collection("users").FindOne(ctx, filter).Decode(&user)
 	if err != nil {
 		ur.logger.Info("Read user by username failure")
 		return model.User{}, nil
@@ -123,8 +128,14 @@ func (ur *UserRepository) UpdateByID(u model.User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	var user nosqlmodel.User
-	err := ur.db.Collection("users").FindOne(ctx, bson.M{"_id": string(u.ID)}).Decode(&user)
+	objectId, err := primitive.ObjectIDFromHex(string(u.ID))
+	if err != nil {
+		return err
+	}
+	filter := bson.M{"_id": bson.M{"$eq": objectId}}
+
+	var user mongomodel.User
+	err = ur.db.Collection("users").FindOne(ctx, filter).Decode(&user)
 	if err != nil {
 		ur.logger.Info("User doesn't exists")
 		return err
@@ -133,8 +144,9 @@ func (ur *UserRepository) UpdateByID(u model.User) error {
 	user.Username = u.Username
 	user.Password = u.Password
 	user.City = u.City
+	update := bson.M{"$set": user}
 
-	_, err = ur.db.Collection("users").UpdateOne(ctx, bson.M{"_id": u.ID}, &user)
+	_, err = ur.db.Collection("users").UpdateOne(ctx, filter, update)
 	if err != nil {
 		ur.logger.Info("User update failure")
 		return err
@@ -150,8 +162,10 @@ func (ur *UserRepository) UpdateByUsername(u model.User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	var user nosqlmodel.User
-	err := ur.db.Collection("users").FindOne(ctx, bson.M{"username": u.Username}).Decode(&user)
+	filter := bson.M{"username": bson.M{"$eq": u.Username}}
+
+	var user mongomodel.User
+	err := ur.db.Collection("users").FindOne(ctx, filter).Decode(&user)
 	if err != nil {
 		ur.logger.Info("User doesn't exists")
 		return err
@@ -159,10 +173,12 @@ func (ur *UserRepository) UpdateByUsername(u model.User) error {
 
 	user.Password = u.Password
 	user.City = u.City
+	update := bson.M{"$set": user}
 
-	_, err = ur.db.Collection("users").UpdateOne(ctx, bson.M{"username": u.Username}, &user)
+	_, err = ur.db.Collection("users").UpdateOne(ctx, filter, update)
 	if err != nil {
 		ur.logger.Info("User update by username failure")
+		return err
 	}
 	ur.logger.Info("User updated by username")
 
@@ -175,8 +191,9 @@ func (ur *UserRepository) DeleteByID(id model.ID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	mId, _ := primitive.ObjectIDFromHex(string(id))
-	_, err := ur.db.Collection("users").DeleteOne(ctx, bson.M{"_id": mId})
+	objectId, _ := primitive.ObjectIDFromHex(string(id))
+	filter := bson.M{"_id": bson.M{"$eq": objectId}}
+	_, err := ur.db.Collection("users").DeleteOne(ctx, filter)
 	if err != nil {
 		ur.logger.Info("User delete failure")
 		return err

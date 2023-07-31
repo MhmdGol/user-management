@@ -3,15 +3,14 @@ package config
 import "github.com/spf13/viper"
 
 type Config struct {
-	Port      string              `mapstructure:"HTTP_PORT"`
-	SecretKey string              `mapstructure:"SECRET_KEY"`
-	NoSQLdb   NoSQLDatabaseConfig `mapstructure:",squash"`
+	Port               string             `mapstructure:"HTTP_PORT"`
+	SecretKey          string             `mapstructure:"SECRET_KEY"`
+	MongoDtabaseConfig MongoDtabaseConfig `mapstructure:",squash"`
 }
 
-type NoSQLDatabaseConfig struct {
-	Host string `mapstructure:"NOSQL_DATABASE_HOST"`
-	Port string `mapstructure:"NOSQL_DATABASE_PORT"`
-	Name string `mapstructure:"NOSQL_DATABASE_NAME"`
+type MongoDtabaseConfig struct {
+	URI  string `mapstructure:"MONGO_DATABASE_URI"`
+	Name string `mapstructure:"MONGO_DATABASE_NAME"`
 }
 
 func Load() (Config, error) {
@@ -19,21 +18,17 @@ func Load() (Config, error) {
 	viper.SetConfigType("env")
 	viper.AddConfigPath(".")
 
-	err := viper.ReadInConfig()
-	if err != nil {
-		return Config{}, nil
-	}
-
-	viper.BindEnv(
-		"HTTP_PORT",
-		"SECRET_KEY",
-		"NOSQL_DATABASE_HOST",
-		"NOSQL_DATABASE_PORT",
-		"NOSQL_DATABASE_NAME",
-	)
+	viper.ReadInConfig()
+	// if err != nil {
+	// }
+	viper.BindEnv("HTTP_URI")
+	viper.BindEnv("PORT")
+	viper.BindEnv("SECRET_KEY")
+	viper.BindEnv("MONGO_DATABASE_URI")
+	viper.BindEnv("MONGO_DATABASE_NAME")
 
 	var c Config
-	err = viper.Unmarshal(&c)
+	err := viper.Unmarshal(&c)
 
 	return c, err
 }

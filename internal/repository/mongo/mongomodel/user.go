@@ -1,4 +1,4 @@
-package nosqlmodel
+package mongomodel
 
 import (
 	"time"
