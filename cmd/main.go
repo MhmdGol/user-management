@@ -2,11 +2,17 @@ package main
 
 import (
 	"log"
+	"net"
 	"os"
 	"user-management/internal/config"
+	"user-management/internal/controller"
 	"user-management/internal/logger"
+	protobuf "user-management/internal/protobuf/user"
 	"user-management/internal/repository/mongo"
+	service "user-management/internal/service/impl"
 	"user-management/internal/store"
+
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -34,7 +40,18 @@ func run() error {
 	}
 	logger.Info("New database created")
 
-	_ = mongo.NewUserRepo(db, logger)
+	r := mongo.NewUserRepo(db, logger)
+	s := service.NewUserService(r)
+	uss := controller.NewUserServiceServer(s)
 
+	lis, err := net.Listen("tcp", ":50051")
+	if err != nil {
+		return err
+	}
+
+	server := grpc.NewServer()
+	protobuf.RegisterUserServiceServer(server, uss)
+
+	err = server.Serve(lis)
 	return err
 }

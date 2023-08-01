@@ -1,12 +1,28 @@
 syntax = "proto3";
 package usermanagement;
+option go_package = "user-management/internal/protobuf";
 
 service UserService {
     rpc Create(UserRequest) returns (UserResponse);
-    rpc All() returns ([]UserResponse);
+}
+
+message UserRequest {
+    string username = 1;
+    string password = 2;
+    string role = 3;
+    string city = 4;
 }
 
 message User {
-    uint32 id = 1;
-    string 
+    string id = 1;
+    string username = 2;
+    string password = 3;
+    string TimeOfCreation = 4;
+    string role = 5;
+    string city = 6;
+    int32 verion = 7;
+}
+
+message UserResponse {
+    bool success = 1;
 }
