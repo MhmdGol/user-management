@@ -1,0 +1,12 @@
+syntax = "proto3";
+package usermanagement;
+
+service UserService {
+    rpc Create(UserRequest) returns (UserResponse);
+    rpc All() returns ([]UserResponse);
+}
+
+message User {
+    uint32 id = 1;
+    string 
+}

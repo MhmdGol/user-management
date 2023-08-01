@@ -46,8 +46,10 @@ func (ur *UserRepository) Create(u model.User) error {
 	user := mongomodel.User{
 		Username:       u.Username,
 		Password:       u.Password,
+		Role:           u.Role,
 		TimeOfCreation: time.Now(),
 		City:           u.City,
+		Version:        1,
 	}
 
 	_, err = ur.db.Collection("users").InsertOne(ctx, &user)
@@ -87,8 +89,10 @@ func (ur *UserRepository) All() ([]model.User, error) {
 			ID:             model.ID(u.ID.String()),
 			Username:       u.Username,
 			Password:       u.Password,
+			Role:           u.Role,
 			TimeOfCreation: u.TimeOfCreation,
 			City:           u.City,
+			Version:        u.Version,
 		}
 	}
 	ur.logger.Info("All users read")
@@ -112,12 +116,15 @@ func (ur *UserRepository) ReadByUsername(u model.User) (model.User, error) {
 	}
 	ur.logger.Info("User by username read")
 
-	var result model.User
-	result.ID = model.ID(user.ID.String())
-	result.Username = user.Username
-	result.Password = user.Password
-	result.TimeOfCreation = user.TimeOfCreation
-	result.City = user.City
+	result := model.User{
+		ID:             model.ID(user.ID.String()),
+		Username:       user.Username,
+		Password:       user.Password,
+		Role:           user.Role,
+		TimeOfCreation: user.TimeOfCreation,
+		City:           user.City,
+		Version:        user.Version,
+	}
 
 	return result, nil
 }
@@ -132,18 +139,28 @@ func (ur *UserRepository) UpdateByID(u model.User) error {
 	if err != nil {
 		return err
 	}
-	filter := bson.M{"_id": bson.M{"$eq": objectId}}
+	filter := bson.M{"_id": bson.M{"$eq": objectId}, "version": bson.M{"$eq": u.Version}}
 
 	var user mongomodel.User
 	err = ur.db.Collection("users").FindOne(ctx, filter).Decode(&user)
 	if err != nil {
-		ur.logger.Info("User doesn't exists")
+		ur.logger.Info("User does not exist or version is not valid")
 		return err
 	}
 
-	user.Username = u.Username
-	user.Password = u.Password
-	user.City = u.City
+	if u.Username != "" {
+		user.Username = u.Username
+	}
+	if u.Password != "" {
+		user.Password = u.Password
+	}
+	if u.Role != "" {
+		user.Role = u.Role
+	}
+	if u.City != "" {
+		user.City = u.City
+	}
+	user.Version = u.Version + 1
 	update := bson.M{"$set": user}
 
 	_, err = ur.db.Collection("users").UpdateOne(ctx, filter, update)
@@ -162,17 +179,25 @@ func (ur *UserRepository) UpdateByUsername(u model.User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	filter := bson.M{"username": bson.M{"$eq": u.Username}}
+	filter := bson.M{"username": bson.M{"$eq": u.Username}, "version": bson.M{"$eq": u.Version}}
 
 	var user mongomodel.User
 	err := ur.db.Collection("users").FindOne(ctx, filter).Decode(&user)
 	if err != nil {
-		ur.logger.Info("User doesn't exists")
+		ur.logger.Info("User does not exist or version is not valid")
 		return err
 	}
 
-	user.Password = u.Password
-	user.City = u.City
+	if u.Password != "" {
+		user.Password = u.Password
+	}
+	if u.Role != "" {
+		user.Role = u.Role
+	}
+	if u.City != "" {
+		user.City = u.City
+	}
+	user.Version = u.Version + 1
 	update := bson.M{"$set": user}
 
 	_, err = ur.db.Collection("users").UpdateOne(ctx, filter, update)
