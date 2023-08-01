@@ -5,7 +5,6 @@ import (
 	"os"
 	"user-management/internal/config"
 	"user-management/internal/logger"
-	"user-management/internal/model"
 	"user-management/internal/repository/mongo"
 	service "user-management/internal/service/impl"
 	"user-management/internal/store"
@@ -38,32 +37,10 @@ func run() error {
 
 	r := mongo.NewUserRepo(db, logger)
 	as := service.NewAuthService(r, conf.RsaPair)
-	us := service.NewUserService(r, as)
+	_ = service.NewUserService(r, as)
+
 	// uss := controller.NewUserServiceServer(s)
-	// t := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTA5MzE4NDAsInJvbGUiOiJhZG1pbiJ9.C8mMuK9KKrP-G7XtST_5BcuLCegt8DL8GpIxeT8M9azJqFHUrx53hJy23uJvem4pHEq5RrlkcWuFTkSWk775WtWyNIDhkxiU2kjajv10SYBMv1PfMQoPVmIEjcVZ6VHtpVpvFLdcmzFwFP4aM68q086tFn3DN-PkTST8avXtHqQ"
 
-	// us.Create(model.User{
-	// 	Username: "Mhmd",
-	// 	Password: "1234",
-	// 	Role:     "staff",
-	// 	City:     "Tehran",
-	// }, model.JwtToken{Token: t})
-
-	t2, _ := as.Login(model.LoginRequest{
-		Username: "Mhmd",
-		Password: "1234",
-	})
-
-	// us.DeleteByID(model.ID("64c88ca7a82bc4c248bafa04"), model.JwtToken{Token: t})
-	us.UpdateByID(model.User{
-		ID:      model.ID("64c88d09a82bc4c248bafa05"),
-		Role:    "user",
-		City:    "Tehran",
-		Version: 1,
-	}, t2)
-	//
-	//
-	//
 	// lis, err := net.Listen("tcp", ":50051")
 	// if err != nil {
 	// 	return err
