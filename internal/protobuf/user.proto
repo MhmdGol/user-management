@@ -4,6 +4,7 @@ option go_package = "user-management/internal/protobuf";
 
 service UserService {
     rpc Create(UserRequest) returns (UserResponse);
+    rpc Login(LoginInfo) returns (JwtTokenResponse);
 }
 
 message UserRequest {
@@ -25,4 +26,14 @@ message User {
 
 message UserResponse {
     bool success = 1;
+}
+
+message LoginInfo {
+    string username = 1;
+    string password = 2;
+}
+
+message JwtTokenResponse {
+    string token = 1;
+    bool success = 2;
 }

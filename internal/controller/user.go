@@ -8,13 +8,15 @@ import (
 )
 
 type UserServiceServer struct {
-	srv service.UserService
+	userSrv service.UserService
+	authSrv service.AuthService
 	protobuf.UnimplementedUserServiceServer
 }
 
-func NewUserServiceServer(s service.UserService) *UserServiceServer {
+func NewUserServiceServer(us service.UserService, as service.AuthService) *UserServiceServer {
 	return &UserServiceServer{
-		srv: s,
+		userSrv: us,
+		authSrv: as,
 	}
 }
 
@@ -24,13 +26,25 @@ func (s *UserServiceServer) Create(ctx context.Context, req *protobuf.UserReques
 	user := model.User{
 		Username: req.Username,
 		Password: req.Password,
-		Role:     req.Role,
+		Role:     model.Role(req.Role),
 		City:     req.City,
 	}
 
-	err := s.srv.Create(user)
+	err := s.userSrv.Create(user, model.JwtToken{
+		Token: "",
+	})
 
 	return &protobuf.UserResponse{
 		Success: true,
 	}, err
 }
+
+// func (s *UserServiceServer) Login(ctx context.Context, req *protobuf.LoginInfo) (*protobuf.JwtTokenResponse, error) {
+// 	login := model.LoginRequest{
+// 		Username: req.Username,
+// 		Password: req.Password,
+// 	}
+
+// 	token, err :=
+
+// }

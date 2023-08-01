@@ -22,10 +22,23 @@ var _ repository.UserRepository = (*UserRepository)(nil)
 
 func NewUserRepo(db *mongo.Database, logger *zap.Logger) *UserRepository {
 	logger.Info("Creating new User repo")
-	return &UserRepository{
+
+	repo := UserRepository{
 		db:     db,
 		logger: logger,
 	}
+
+	err := repo.Create(model.User{
+		Username: "su",
+		Password: "Admin@123",
+		Role:     "admin",
+	})
+	if err != nil {
+		logger.Info("su insert failure")
+	}
+	logger.Info("su inserted to database")
+
+	return &repo
 }
 
 func (ur *UserRepository) Create(u model.User) error {
@@ -46,7 +59,7 @@ func (ur *UserRepository) Create(u model.User) error {
 	user := mongomodel.User{
 		Username:       u.Username,
 		Password:       u.Password,
-		Role:           u.Role,
+		Role:           string(u.Role),
 		TimeOfCreation: time.Now(),
 		City:           u.City,
 		Version:        1,
@@ -89,7 +102,7 @@ func (ur *UserRepository) All() ([]model.User, error) {
 			ID:             model.ID(u.ID.String()),
 			Username:       u.Username,
 			Password:       u.Password,
-			Role:           u.Role,
+			Role:           model.Role(u.Role),
 			TimeOfCreation: u.TimeOfCreation,
 			City:           u.City,
 			Version:        u.Version,
@@ -120,7 +133,7 @@ func (ur *UserRepository) ReadByUsername(u model.User) (model.User, error) {
 		ID:             model.ID(user.ID.String()),
 		Username:       user.Username,
 		Password:       user.Password,
-		Role:           user.Role,
+		Role:           model.Role(user.Role),
 		TimeOfCreation: user.TimeOfCreation,
 		City:           user.City,
 		Version:        user.Version,
@@ -155,7 +168,7 @@ func (ur *UserRepository) UpdateByID(u model.User) error {
 		user.Password = u.Password
 	}
 	if u.Role != "" {
-		user.Role = u.Role
+		user.Role = string(u.Role)
 	}
 	if u.City != "" {
 		user.City = u.City
@@ -192,7 +205,7 @@ func (ur *UserRepository) UpdateByUsername(u model.User) error {
 		user.Password = u.Password
 	}
 	if u.Role != "" {
-		user.Role = u.Role
+		user.Role = string(u.Role)
 	}
 	if u.City != "" {
 		user.City = u.City

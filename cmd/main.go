@@ -2,17 +2,13 @@ package main
 
 import (
 	"log"
-	"net"
 	"os"
 	"user-management/internal/config"
-	"user-management/internal/controller"
 	"user-management/internal/logger"
-	protobuf "user-management/internal/protobuf/user"
+	"user-management/internal/model"
 	"user-management/internal/repository/mongo"
 	service "user-management/internal/service/impl"
 	"user-management/internal/store"
-
-	"google.golang.org/grpc"
 )
 
 func main() {
@@ -41,17 +37,41 @@ func run() error {
 	logger.Info("New database created")
 
 	r := mongo.NewUserRepo(db, logger)
-	s := service.NewUserService(r)
-	uss := controller.NewUserServiceServer(s)
+	as := service.NewAuthService(r, conf.RsaPair)
+	us := service.NewUserService(r, as)
+	// uss := controller.NewUserServiceServer(s)
+	// t := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTA5MzE4NDAsInJvbGUiOiJhZG1pbiJ9.C8mMuK9KKrP-G7XtST_5BcuLCegt8DL8GpIxeT8M9azJqFHUrx53hJy23uJvem4pHEq5RrlkcWuFTkSWk775WtWyNIDhkxiU2kjajv10SYBMv1PfMQoPVmIEjcVZ6VHtpVpvFLdcmzFwFP4aM68q086tFn3DN-PkTST8avXtHqQ"
 
-	lis, err := net.Listen("tcp", ":50051")
-	if err != nil {
-		return err
-	}
+	// us.Create(model.User{
+	// 	Username: "Mhmd",
+	// 	Password: "1234",
+	// 	Role:     "staff",
+	// 	City:     "Tehran",
+	// }, model.JwtToken{Token: t})
 
-	server := grpc.NewServer()
-	protobuf.RegisterUserServiceServer(server, uss)
+	t2, _ := as.Login(model.LoginRequest{
+		Username: "Mhmd",
+		Password: "1234",
+	})
 
-	err = server.Serve(lis)
+	// us.DeleteByID(model.ID("64c88ca7a82bc4c248bafa04"), model.JwtToken{Token: t})
+	us.UpdateByID(model.User{
+		ID:      model.ID("64c88d09a82bc4c248bafa05"),
+		Role:    "user",
+		City:    "Tehran",
+		Version: 1,
+	}, t2)
+	//
+	//
+	//
+	// lis, err := net.Listen("tcp", ":50051")
+	// if err != nil {
+	// 	return err
+	// }
+
+	// server := grpc.NewServer()
+	// protobuf.RegisterUserServiceServer(server, uss)
+
+	// err = server.Serve(lis)
 	return err
 }

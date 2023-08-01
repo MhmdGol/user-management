@@ -6,7 +6,7 @@ type User struct {
 	ID             ID
 	Username       string
 	Password       string
-	Role           string
+	Role           Role
 	TimeOfCreation time.Time
 	City           string
 	Version        int
