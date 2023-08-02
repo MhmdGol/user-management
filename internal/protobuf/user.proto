@@ -3,15 +3,26 @@ package usermanagement;
 option go_package = "user-management/internal/protobuf";
 
 service UserService {
-    rpc Create(UserRequest) returns (UserResponse);
-    rpc Login(LoginInfo) returns (JwtTokenResponse);
+    rpc Create(UserRequest) returns (Response);
+    rpc Login(LoginInfo) returns (JwtToken);
+    rpc All(Empty) returns (Users);
+    rpc ReadByUsername(Username) returns (User);
+    rpc UpdateByID(Update) returns (Response);
+    rpc DeleteByID(Delete) returns (Response);
+    rpc UpdatePassword(UpdatePass) returns (Response);
 }
 
 message UserRequest {
-    string username = 1;
-    string password = 2;
-    string role = 3;
-    string city = 4;
+    JwtToken token = 1;
+    string username = 2;
+    string password = 3;
+    string role = 4;
+    string city = 5;
+}
+
+message Update {
+    JwtToken token = 1;
+    User user = 2;
 }
 
 message User {
@@ -21,10 +32,19 @@ message User {
     string TimeOfCreation = 4;
     string role = 5;
     string city = 6;
-    int32 verion = 7;
+    int32 version = 7;
 }
 
-message UserResponse {
+message Delete {
+    JwtToken token = 1;
+    ID id = 2;
+}
+
+message Users {
+    repeated User users = 1;
+}
+
+message Response {
     bool success = 1;
 }
 
@@ -33,7 +53,22 @@ message LoginInfo {
     string password = 2;
 }
 
-message JwtTokenResponse {
+message JwtToken {
     string token = 1;
-    bool success = 2;
+}
+
+message Empty {}
+
+message ID {
+    string id = 1;
+}
+
+message UpdatePass {
+    string username = 1;
+    string oldpass = 2;
+    string newpass = 3;
+}
+
+message Username {
+    string username = 1;
 }

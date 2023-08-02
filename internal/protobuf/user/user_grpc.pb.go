@@ -19,16 +19,26 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	UserService_Create_FullMethodName = "/usermanagement.UserService/Create"
-	UserService_Login_FullMethodName  = "/usermanagement.UserService/Login"
+	UserService_Create_FullMethodName         = "/usermanagement.UserService/Create"
+	UserService_Login_FullMethodName          = "/usermanagement.UserService/Login"
+	UserService_All_FullMethodName            = "/usermanagement.UserService/All"
+	UserService_ReadByUsername_FullMethodName = "/usermanagement.UserService/ReadByUsername"
+	UserService_UpdateByID_FullMethodName     = "/usermanagement.UserService/UpdateByID"
+	UserService_DeleteByID_FullMethodName     = "/usermanagement.UserService/DeleteByID"
+	UserService_UpdatePassword_FullMethodName = "/usermanagement.UserService/UpdatePassword"
 )
 
 // UserServiceClient is the client API for UserService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserServiceClient interface {
-	Create(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*UserResponse, error)
-	Login(ctx context.Context, in *LoginInfo, opts ...grpc.CallOption) (*JwtTokenResponse, error)
+	Create(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*Response, error)
+	Login(ctx context.Context, in *LoginInfo, opts ...grpc.CallOption) (*JwtToken, error)
+	All(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Users, error)
+	ReadByUsername(ctx context.Context, in *Username, opts ...grpc.CallOption) (*User, error)
+	UpdateByID(ctx context.Context, in *Update, opts ...grpc.CallOption) (*Response, error)
+	DeleteByID(ctx context.Context, in *Delete, opts ...grpc.CallOption) (*Response, error)
+	UpdatePassword(ctx context.Context, in *UpdatePass, opts ...grpc.CallOption) (*Response, error)
 }
 
 type userServiceClient struct {
@@ -39,8 +49,8 @@ func NewUserServiceClient(cc grpc.ClientConnInterface) UserServiceClient {
 	return &userServiceClient{cc}
 }
 
-func (c *userServiceClient) Create(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*UserResponse, error) {
-	out := new(UserResponse)
+func (c *userServiceClient) Create(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
 	err := c.cc.Invoke(ctx, UserService_Create_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -48,9 +58,54 @@ func (c *userServiceClient) Create(ctx context.Context, in *UserRequest, opts ..
 	return out, nil
 }
 
-func (c *userServiceClient) Login(ctx context.Context, in *LoginInfo, opts ...grpc.CallOption) (*JwtTokenResponse, error) {
-	out := new(JwtTokenResponse)
+func (c *userServiceClient) Login(ctx context.Context, in *LoginInfo, opts ...grpc.CallOption) (*JwtToken, error) {
+	out := new(JwtToken)
 	err := c.cc.Invoke(ctx, UserService_Login_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) All(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Users, error) {
+	out := new(Users)
+	err := c.cc.Invoke(ctx, UserService_All_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ReadByUsername(ctx context.Context, in *Username, opts ...grpc.CallOption) (*User, error) {
+	out := new(User)
+	err := c.cc.Invoke(ctx, UserService_ReadByUsername_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) UpdateByID(ctx context.Context, in *Update, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
+	err := c.cc.Invoke(ctx, UserService_UpdateByID_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) DeleteByID(ctx context.Context, in *Delete, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
+	err := c.cc.Invoke(ctx, UserService_DeleteByID_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) UpdatePassword(ctx context.Context, in *UpdatePass, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
+	err := c.cc.Invoke(ctx, UserService_UpdatePassword_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -61,8 +116,13 @@ func (c *userServiceClient) Login(ctx context.Context, in *LoginInfo, opts ...gr
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility
 type UserServiceServer interface {
-	Create(context.Context, *UserRequest) (*UserResponse, error)
-	Login(context.Context, *LoginInfo) (*JwtTokenResponse, error)
+	Create(context.Context, *UserRequest) (*Response, error)
+	Login(context.Context, *LoginInfo) (*JwtToken, error)
+	All(context.Context, *Empty) (*Users, error)
+	ReadByUsername(context.Context, *Username) (*User, error)
+	UpdateByID(context.Context, *Update) (*Response, error)
+	DeleteByID(context.Context, *Delete) (*Response, error)
+	UpdatePassword(context.Context, *UpdatePass) (*Response, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -70,11 +130,26 @@ type UserServiceServer interface {
 type UnimplementedUserServiceServer struct {
 }
 
-func (UnimplementedUserServiceServer) Create(context.Context, *UserRequest) (*UserResponse, error) {
+func (UnimplementedUserServiceServer) Create(context.Context, *UserRequest) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
-func (UnimplementedUserServiceServer) Login(context.Context, *LoginInfo) (*JwtTokenResponse, error) {
+func (UnimplementedUserServiceServer) Login(context.Context, *LoginInfo) (*JwtToken, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+}
+func (UnimplementedUserServiceServer) All(context.Context, *Empty) (*Users, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method All not implemented")
+}
+func (UnimplementedUserServiceServer) ReadByUsername(context.Context, *Username) (*User, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReadByUsername not implemented")
+}
+func (UnimplementedUserServiceServer) UpdateByID(context.Context, *Update) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateByID not implemented")
+}
+func (UnimplementedUserServiceServer) DeleteByID(context.Context, *Delete) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteByID not implemented")
+}
+func (UnimplementedUserServiceServer) UpdatePassword(context.Context, *UpdatePass) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdatePassword not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 
@@ -125,6 +200,96 @@ func _UserService_Login_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_All_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).All(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_All_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).All(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ReadByUsername_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Username)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ReadByUsername(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ReadByUsername_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ReadByUsername(ctx, req.(*Username))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_UpdateByID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Update)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).UpdateByID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_UpdateByID_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).UpdateByID(ctx, req.(*Update))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_DeleteByID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Delete)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).DeleteByID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_DeleteByID_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).DeleteByID(ctx, req.(*Delete))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_UpdatePassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdatePass)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).UpdatePassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_UpdatePassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).UpdatePassword(ctx, req.(*UpdatePass))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -139,6 +304,26 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Login",
 			Handler:    _UserService_Login_Handler,
+		},
+		{
+			MethodName: "All",
+			Handler:    _UserService_All_Handler,
+		},
+		{
+			MethodName: "ReadByUsername",
+			Handler:    _UserService_ReadByUsername_Handler,
+		},
+		{
+			MethodName: "UpdateByID",
+			Handler:    _UserService_UpdateByID_Handler,
+		},
+		{
+			MethodName: "DeleteByID",
+			Handler:    _UserService_DeleteByID_Handler,
+		},
+		{
+			MethodName: "UpdatePassword",
+			Handler:    _UserService_UpdatePassword_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

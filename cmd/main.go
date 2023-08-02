@@ -2,12 +2,17 @@ package main
 
 import (
 	"log"
+	"net"
 	"os"
 	"user-management/internal/config"
+	"user-management/internal/controller"
 	"user-management/internal/logger"
+	protobuf "user-management/internal/protobuf/user"
 	"user-management/internal/repository/mongo"
 	service "user-management/internal/service/impl"
 	"user-management/internal/store"
+
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -37,18 +42,18 @@ func run() error {
 
 	r := mongo.NewUserRepo(db, logger)
 	as := service.NewAuthService(r, conf.RsaPair)
-	_ = service.NewUserService(r, as)
+	us := service.NewUserService(r, as)
 
-	// uss := controller.NewUserServiceServer(s)
+	uss := controller.NewUserServiceServer(us, as)
 
-	// lis, err := net.Listen("tcp", ":50051")
-	// if err != nil {
-	// 	return err
-	// }
+	lis, err := net.Listen("tcp", ":50051")
+	if err != nil {
+		return err
+	}
 
-	// server := grpc.NewServer()
-	// protobuf.RegisterUserServiceServer(server, uss)
+	server := grpc.NewServer()
+	protobuf.RegisterUserServiceServer(server, uss)
 
-	// err = server.Serve(lis)
+	err = server.Serve(lis)
 	return err
 }
