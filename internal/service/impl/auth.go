@@ -1,119 +1,86 @@
 package service
 
 import (
+	"context"
 	"fmt"
-	"io/ioutil"
 	"time"
 	"user-management/internal/config"
+	"user-management/internal/jwtpkg"
 	"user-management/internal/model"
 	"user-management/internal/repository"
 	"user-management/internal/service"
-
-	"github.com/dgrijalva/jwt-go"
+	"user-management/pkg"
 )
 
 type AuthService struct {
-	userRepo      repository.UserRepository
-	secretKeyPath string
-	publicKeyPath string
+	userRepo repository.UserRepository
+	JwtToken *jwtpkg.JwtToken
 }
 
 var _ service.AuthService = (*AuthService)(nil)
 
 func NewAuthService(r repository.UserRepository, conf config.RsaPair) *AuthService {
 	return &AuthService{
-		userRepo:      r,
-		secretKeyPath: conf.SecretKeyPath,
-		publicKeyPath: conf.PublicKeyPath,
+		userRepo: r,
 	}
 }
 
-func (as *AuthService) Login(lr model.LoginRequest) (model.JwtToken, error) {
-	user, err := as.userRepo.ReadByUsername(model.User{
-		Username: lr.Username,
+func (as *AuthService) Login(ctx context.Context, u model.Username, p model.Password) (model.JwtToken, error) {
+	user, err := as.userRepo.ReadByUsername(ctx, u)
+	if err != nil {
+		return "", err
+	}
+
+	hp, _ := pkg.HashPassword(string(p))
+	if user.Password != model.HashedPass(hp) {
+		return "", fmt.Errorf("unauthorized")
+	}
+
+	tokenString, err := as.JwtToken.MakeToken(model.TokenClaim{
+		Username:       u,
+		Role:           user.Role,
+		ExpirationTime: time.Now().Add(time.Hour),
 	})
 	if err != nil {
-		return model.JwtToken{}, err
+		return "", err
 	}
 
-	if user.Password != lr.Password {
-		return model.JwtToken{}, fmt.Errorf("unauthorized")
-	}
-
-	expirationTime := time.Now().Add(time.Hour)
-	claims := jwt.MapClaims{
-		"role": user.Role,
-		"exp":  expirationTime.Unix(),
-	}
-
-	privateKeyBytes, err := ioutil.ReadFile(as.secretKeyPath)
-	if err != nil {
-		panic(err)
-	}
-	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(privateKeyBytes)
-	if err != nil {
-		panic(err)
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	tokenString, err := token.SignedString(privateKey)
-	if err != nil {
-		return model.JwtToken{}, err
-	}
-
-	return model.JwtToken{
-		Token: tokenString,
-	}, err
+	return tokenString, err
 }
 
 func (as *AuthService) Role(t model.JwtToken) (model.Role, error) {
-	publicKeyBytes, err := ioutil.ReadFile(as.publicKeyPath)
-	if err != nil {
-		panic(err)
-	}
-	publicKey, err := jwt.ParseRSAPublicKeyFromPEM(publicKeyBytes)
-	if err != nil {
-		panic(err)
-	}
-
-	token, err := jwt.Parse(t.Token, func(token *jwt.Token) (interface{}, error) {
-		return publicKey, nil
-	})
+	claims, err := as.JwtToken.ExtractClaims(t)
 	if err != nil {
 		return model.Role(""), err
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		expirationTime := time.Unix(int64(claims["exp"].(float64)), 0)
-		if time.Now().After(expirationTime) {
-			return model.Role(""), fmt.Errorf("token has expired")
-		}
-
-		role, ok := claims["role"].(string)
-		if !ok {
-			return model.Role(""), fmt.Errorf("invalid token: role claim not found")
-		}
-
-		return model.Role(role), nil
-	}
-
-	return model.Role(""), fmt.Errorf("invalid token")
+	return claims.Role, nil
 }
 
-func (as *AuthService) UpdatePassword(up model.UpdatePassword) error {
-	u, err := as.userRepo.ReadByUsername(model.User{
-		Username: up.Username,
-	})
+func (as *AuthService) Username(t model.JwtToken) (model.Username, error) {
+	claims, err := as.JwtToken.ExtractClaims(t)
+	if err != nil {
+		return model.Username(""), err
+	}
+
+	return claims.Username, nil
+}
+
+func (as *AuthService) UpdatePassword(ctx context.Context, up model.UpdatePassword) error {
+	user, err := as.userRepo.ReadByUsername(ctx, up.Username)
 	if err != nil {
 		return err
 	}
-	if u.Password != up.OldPassword {
+
+	hOldPass, _ := pkg.HashPassword(string(up.OldPassword))
+	if user.Password != model.HashedPass(hOldPass) {
 		return fmt.Errorf("not allowed")
 	}
 
-	return as.userRepo.UpdateByUsername(model.User{
+	hNewPass, _ := pkg.HashPassword(string(up.NewPassword))
+	return as.userRepo.UpdateByUsername(ctx, model.User{
 		Username: up.Username,
-		Password: up.NewPassword,
-		Version:  u.Version,
+		Password: model.HashedPass(hNewPass),
+		Version:  user.Version,
 	})
 }

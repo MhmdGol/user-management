@@ -1,10 +1,11 @@
 package service
 
 import (
-	"fmt"
+	"context"
 	"user-management/internal/model"
 	"user-management/internal/repository"
 	"user-management/internal/service"
+	"user-management/pkg"
 )
 
 type UserService struct {
@@ -21,46 +22,72 @@ func NewUserService(r repository.UserRepository, a service.AuthService) *UserSer
 	}
 }
 
-func (us *UserService) Create(u model.User, t model.JwtToken) error {
-	r, err := us.authService.Role(t)
+func (us *UserService) Create(ctx context.Context, u model.UserInfo) error {
+	hPass, err := pkg.HashPassword(string(u.Password))
 	if err != nil {
 		return err
 	}
-	if r != "admin" {
-		return fmt.Errorf("not allowed")
+	return us.userRepo.Create(ctx, model.User{
+		Username: u.Username,
+		Password: model.HashedPass(hPass),
+		Role:     u.Role,
+		City:     u.City,
+	})
+}
+
+func (us *UserService) All(ctx context.Context) ([]model.UserInfo, error) {
+	users, err := us.userRepo.All(ctx)
+	if err != nil {
+		return []model.UserInfo{}, nil
 	}
 
-	return us.userRepo.Create(u)
+	uInfos := make([]model.UserInfo, len(users))
+	for i, u := range users {
+		uInfos[i] = model.UserInfo{
+			ID:             u.ID,
+			Username:       u.Username,
+			Role:           u.Role,
+			TimeOfCreation: u.TimeOfCreation,
+			City:           u.City,
+			Version:        u.Version,
+		}
+	}
+
+	return uInfos, nil
 }
 
-func (us *UserService) All() ([]model.User, error) {
-	return us.userRepo.All()
+func (us *UserService) ReadByUsername(ctx context.Context, u model.Username) (model.UserInfo, error) {
+	user, err := us.userRepo.ReadByUsername(ctx, u)
+	if err != nil {
+		return model.UserInfo{}, nil
+	}
+
+	return model.UserInfo{
+		ID:             user.ID,
+		Username:       user.Username,
+		Role:           user.Role,
+		TimeOfCreation: user.TimeOfCreation,
+		City:           user.City,
+		Version:        user.Version,
+	}, nil
 }
 
-func (us *UserService) ReadByUsername(u model.User) (model.User, error) {
-	return us.userRepo.ReadByUsername(u)
-}
-
-func (us *UserService) UpdateByID(u model.User, t model.JwtToken) error {
-	r, err := us.authService.Role(t)
+func (us *UserService) UpdateByID(ctx context.Context, id model.ID, u model.UserInfo) error {
+	hPass, err := pkg.HashPassword(string(u.Password))
 	if err != nil {
 		return err
 	}
-	if r != "admin" && r != "staff" {
-		return fmt.Errorf("not allowed")
-	}
 
-	return us.userRepo.UpdateByID(u)
+	return us.userRepo.UpdateByID(ctx, model.User{
+		ID:       id,
+		Username: u.Username,
+		Password: model.HashedPass(hPass),
+		Role:     u.Role,
+		City:     u.City,
+		Version:  u.Version,
+	})
 }
 
-func (us *UserService) DeleteByID(id model.ID, t model.JwtToken) error {
-	r, err := us.authService.Role(t)
-	if err != nil {
-		return err
-	}
-	if r != "admin" {
-		return fmt.Errorf("not allowed")
-	}
-
-	return us.userRepo.DeleteByID(id)
+func (us *UserService) DeleteByID(ctx context.Context, id model.ID) error {
+	return us.userRepo.DeleteByID(ctx, id)
 }

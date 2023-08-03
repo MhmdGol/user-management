@@ -28,7 +28,10 @@ func NewUserRepo(db *mongo.Database, logger *zap.Logger) *UserRepository {
 		logger: logger,
 	}
 
-	err := repo.Create(model.User{
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	err := repo.Create(ctx, model.User{
 		Username: "su",
 		Password: "Admin@123",
 		Role:     "admin",
@@ -41,11 +44,8 @@ func NewUserRepo(db *mongo.Database, logger *zap.Logger) *UserRepository {
 	return &repo
 }
 
-func (ur *UserRepository) Create(u model.User) error {
+func (ur *UserRepository) Create(ctx context.Context, u model.User) error {
 	ur.logger.Info("Creating new user")
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
 
 	filter := bson.M{"username": bson.M{"$eq": u.Username}}
 
@@ -57,8 +57,8 @@ func (ur *UserRepository) Create(u model.User) error {
 	ur.logger.Info("Safe to insert")
 
 	user := mongomodel.User{
-		Username:       u.Username,
-		Password:       u.Password,
+		Username:       string(u.Username),
+		Password:       string(u.Password),
 		Role:           string(u.Role),
 		TimeOfCreation: time.Now(),
 		City:           u.City,
@@ -75,11 +75,8 @@ func (ur *UserRepository) Create(u model.User) error {
 	return nil
 }
 
-func (ur *UserRepository) All() ([]model.User, error) {
+func (ur *UserRepository) All(ctx context.Context) ([]model.User, error) {
 	ur.logger.Info("Reading all users")
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
 
 	cursor, err := ur.db.Collection("users").Find(ctx, bson.D{})
 	if err != nil {
@@ -100,8 +97,8 @@ func (ur *UserRepository) All() ([]model.User, error) {
 	for i, u := range users {
 		result[i] = model.User{
 			ID:             model.ID(u.ID.String()),
-			Username:       u.Username,
-			Password:       u.Password,
+			Username:       model.Username(u.Username),
+			Password:       model.HashedPass(u.Password),
 			Role:           model.Role(u.Role),
 			TimeOfCreation: u.TimeOfCreation,
 			City:           u.City,
@@ -113,13 +110,10 @@ func (ur *UserRepository) All() ([]model.User, error) {
 	return result, nil
 }
 
-func (ur *UserRepository) ReadByUsername(u model.User) (model.User, error) {
+func (ur *UserRepository) ReadByUsername(ctx context.Context, u model.Username) (model.User, error) {
 	ur.logger.Info("Reading an user by username")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	filter := bson.M{"username": bson.M{"$eq": u.Username}}
+	filter := bson.M{"username": bson.M{"$eq": u}}
 
 	var user mongomodel.User
 	err := ur.db.Collection("users").FindOne(ctx, filter).Decode(&user)
@@ -131,8 +125,8 @@ func (ur *UserRepository) ReadByUsername(u model.User) (model.User, error) {
 
 	result := model.User{
 		ID:             model.ID(user.ID.String()),
-		Username:       user.Username,
-		Password:       user.Password,
+		Username:       model.Username(user.Username),
+		Password:       model.HashedPass(user.Password),
 		Role:           model.Role(user.Role),
 		TimeOfCreation: user.TimeOfCreation,
 		City:           user.City,
@@ -142,11 +136,8 @@ func (ur *UserRepository) ReadByUsername(u model.User) (model.User, error) {
 	return result, nil
 }
 
-func (ur *UserRepository) UpdateByID(u model.User) error {
+func (ur *UserRepository) UpdateByID(ctx context.Context, u model.User) error {
 	ur.logger.Info("Updating an user")
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
 
 	objectId, err := primitive.ObjectIDFromHex(string(u.ID))
 	if err != nil {
@@ -162,10 +153,10 @@ func (ur *UserRepository) UpdateByID(u model.User) error {
 	}
 
 	if u.Username != "" {
-		user.Username = u.Username
+		user.Username = string(u.Username)
 	}
 	if u.Password != "" {
-		user.Password = u.Password
+		user.Password = string(u.Password)
 	}
 	if u.Role != "" {
 		user.Role = string(u.Role)
@@ -186,11 +177,8 @@ func (ur *UserRepository) UpdateByID(u model.User) error {
 	return nil
 }
 
-func (ur *UserRepository) UpdateByUsername(u model.User) error {
+func (ur *UserRepository) UpdateByUsername(ctx context.Context, u model.User) error {
 	ur.logger.Info("Updating an user by username")
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
 
 	filter := bson.M{"username": bson.M{"$eq": u.Username}, "version": bson.M{"$eq": u.Version}}
 
@@ -202,7 +190,7 @@ func (ur *UserRepository) UpdateByUsername(u model.User) error {
 	}
 
 	if u.Password != "" {
-		user.Password = u.Password
+		user.Password = string(u.Password)
 	}
 	if u.Role != "" {
 		user.Role = string(u.Role)
@@ -223,11 +211,8 @@ func (ur *UserRepository) UpdateByUsername(u model.User) error {
 	return nil
 }
 
-func (ur *UserRepository) DeleteByID(id model.ID) error {
+func (ur *UserRepository) DeleteByID(ctx context.Context, id model.ID) error {
 	ur.logger.Info("Deleting an user")
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
 
 	objectId, _ := primitive.ObjectIDFromHex(string(id))
 	filter := bson.M{"_id": bson.M{"$eq": objectId}}

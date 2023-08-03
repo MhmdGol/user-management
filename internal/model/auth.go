@@ -1,16 +1,17 @@
 package model
 
-type LoginRequest struct {
-	Username string
-	Password string
-}
+import "time"
 
-type JwtToken struct {
-	Token string
-}
+type JwtToken string
 
 type UpdatePassword struct {
-	Username    string
-	OldPassword string
-	NewPassword string
+	Username    Username
+	OldPassword Password
+	NewPassword Password
+}
+
+type TokenClaim struct {
+	Username       Username
+	Role           Role
+	ExpirationTime time.Time
 }

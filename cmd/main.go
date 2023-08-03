@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -46,7 +47,7 @@ func run() error {
 
 	uss := controller.NewUserServiceServer(us, as)
 
-	lis, err := net.Listen("tcp", ":50051")
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", conf.Port))
 	if err != nil {
 		return err
 	}
