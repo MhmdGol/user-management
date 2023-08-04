@@ -59,22 +59,18 @@ func (c *UserServiceServer) CreateUserService(ctx context.Context, req *connect_
 	}, nil
 }
 
-// GetAllUsersService calls usermanagement.v1.UserService.GetAllUsersService.
 func (c *UserServiceServer) GetAllUsersService(ctx context.Context, req *connect_go.Request[proto.GetAllUsersServiceRequest]) (*connect_go.Response[proto.GetAllUsersServiceResponse], error) {
 	return nil, nil
 }
 
-// GetInfoService calls usermanagement.v1.UserService.GetInfoService.
 func (c *UserServiceServer) GetInfoService(ctx context.Context, req *connect_go.Request[proto.GetInfoServiceRequest]) (*connect_go.Response[proto.GetInfoServiceResponse], error) {
 	return nil, nil
 }
 
-// UpdateByIdService calls usermanagement.v1.UserService.UpdateByIdService.
 func (c *UserServiceServer) UpdateByIdService(ctx context.Context, req *connect_go.Request[proto.UpdateByIdServiceRequest]) (*connect_go.Response[proto.UpdateByIdServiceResponse], error) {
 	return nil, nil
 }
 
-// DeleteByIdService calls usermanagement.v1.UserService.DeleteByIdService.
 func (c *UserServiceServer) DeleteByIdService(ctx context.Context, req *connect_go.Request[proto.DeleteByIdServiceRequest]) (*connect_go.Response[proto.DeleteByIdServiceResponse], error) {
 	return nil, nil
 }
