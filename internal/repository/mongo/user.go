@@ -28,19 +28,6 @@ func NewUserRepo(db *mongo.Database, logger *zap.Logger) *UserRepository {
 		logger: logger,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	err := repo.Create(ctx, model.User{
-		Username: "su",
-		Password: "Admin@123",
-		Role:     "admin",
-	})
-	if err != nil {
-		logger.Info("su insert failure")
-	}
-	logger.Info("su inserted to database")
-
 	return &repo
 }
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"time"
-	"user-management/internal/config"
 	"user-management/internal/jwtpkg"
 	"user-management/internal/model"
 	"user-management/internal/repository"
@@ -19,9 +18,10 @@ type AuthService struct {
 
 var _ service.AuthService = (*AuthService)(nil)
 
-func NewAuthService(r repository.UserRepository, conf config.RsaPair) *AuthService {
+func NewAuthService(r repository.UserRepository, j *jwtpkg.JwtToken) *AuthService {
 	return &AuthService{
 		userRepo: r,
+		JwtToken: j,
 	}
 }
 
@@ -31,8 +31,8 @@ func (as *AuthService) Login(ctx context.Context, u model.Username, p model.Pass
 		return "", err
 	}
 
-	hp, _ := pkg.HashPassword(string(p))
-	if user.Password != model.HashedPass(hp) {
+	err = pkg.ValidatePassword(string(user.Password), string(p))
+	if err != nil {
 		return "", fmt.Errorf("unauthorized")
 	}
 

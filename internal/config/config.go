@@ -3,6 +3,7 @@ package config
 import "github.com/spf13/viper"
 
 type Config struct {
+	HttpURI            string             `mapstructure:"HTTP_URI"`
 	Port               string             `mapstructure:"HTTP_PORT"`
 	RsaPair            RsaPair            `mapstructure:",squash"`
 	MongoDtabaseConfig MongoDtabaseConfig `mapstructure:",squash"`
@@ -26,7 +27,8 @@ func Load() (Config, error) {
 	viper.ReadInConfig()
 	// if err != nil {
 	// }
-	viper.BindEnv("PORT")
+	viper.BindEnv("HTTP_URI")
+	viper.BindEnv("HTTP_PORT")
 	viper.BindEnv("SECRET_KEY_PATH")
 	viper.BindEnv("PUBLIC_KEY_PATH")
 	viper.BindEnv("MONGO_DATABASE_URI")

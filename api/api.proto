@@ -1,74 +1,87 @@
 syntax = "proto3";
-package usermanagement;
-option go_package = "user-management/internal/protobuf";
+package usermanagement.v1;
+option go_package = "user-management/internal/proto";
 
 service UserService {
-    rpc Create(UserRequest) returns (Response);
-    rpc Login(LoginInfo) returns (JwtToken);
-    rpc All(Empty) returns (Users);
-    rpc ReadByUsername(Username) returns (User);
-    rpc UpdateByID(Update) returns (Response);
-    rpc DeleteByID(Delete) returns (Response);
-    rpc UpdatePassword(UpdatePass) returns (Response);
+    rpc CreateUserService(CreateUserServiceRequest) returns (CreateUserServiceResponse);
+    rpc GetAllUsersService(GetAllUsersServiceRequest) returns (GetAllUsersServiceResponse);
+    rpc GetInfoService(GetInfoServiceRequest) returns (GetInfoServiceResponse);
+    rpc UpdateByIdService(UpdateByIdServiceRequest) returns (UpdateByIdServiceResponse);
+    rpc DeleteByIdService(DeleteByIdServiceRequest) returns (DeleteByIdServiceResponse);
 }
 
-message UserRequest {
-    JwtToken token = 1;
+service AuthService {
+    rpc LoginService(LoginServiceRequest) returns (LoginServiceResponse);
+    rpc UpdatePasswordService(UpdatePasswordServiceRequest) returns (UpdatePasswordServiceResponse);
+}
+
+message CreateUserServiceRequest {
     string username = 2;
     string password = 3;
     string role = 4;
     string city = 5;
 }
 
-message Update {
-    JwtToken token = 1;
-    User user = 2;
+message CreateUserServiceResponse {
+    bool success = 1;
+}
+
+message LoginServiceRequest {
+    string username = 1;
+    string password = 2;
+}
+
+message LoginServiceResponse {
+    string jwt_token = 1;
 }
 
 message User {
     string id = 1;
     string username = 2;
-    string password = 3;
-    string TimeOfCreation = 4;
-    string role = 5;
-    string city = 6;
-    int32 version = 7;
+    string time_of_creation = 3;
+    string role = 4;
+    string city = 5;
+    int32 version = 6;
 }
 
-message Delete {
-    JwtToken token = 1;
-    ID id = 2;
-}
+message GetAllUsersServiceRequest {}
 
-message Users {
+message GetAllUsersServiceResponse {
     repeated User users = 1;
 }
 
-message Response {
+message GetInfoServiceRequest {}
+
+message GetInfoServiceResponse {
+    User user = 1;
+}
+
+message UpdateByIdServiceRequest {
+    string id = 1;
+    string username = 2;
+    string role = 3;
+    string city = 4;
+    int32 version = 5;
+}
+
+message UpdateByIdServiceResponse {
     bool success = 1;
 }
 
-message LoginInfo {
-    string username = 1;
-    string password = 2;
-}
-
-message JwtToken {
-    string token = 1;
-}
-
-message Empty {}
-
-message ID {
+message DeleteByIdServiceRequest {
     string id = 1;
 }
 
-message UpdatePass {
-    string username = 1;
-    string oldpass = 2;
-    string newpass = 3;
+message DeleteByIdServiceResponse {
+    bool success = 1;
 }
 
-message Username {
+message UpdatePasswordServiceRequest {
     string username = 1;
+    string old_pass = 2;
+    string new_pass = 3;
+}
+
+message UpdatePasswordServiceResponse {
+    bool success = 1;
 }

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 	"user-management/internal/model"
 	"user-management/internal/repository"
 	"user-management/internal/service"
@@ -16,10 +17,23 @@ type UserService struct {
 var _ service.UserService = (*UserService)(nil)
 
 func NewUserService(r repository.UserRepository, a service.AuthService) *UserService {
-	return &UserService{
+	srv := UserService{
 		userRepo:    r,
 		authService: a,
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	hPass, _ := pkg.HashPassword("Admin@123")
+
+	srv.userRepo.Create(ctx, model.User{
+		Username: "su",
+		Password: model.HashedPass(hPass),
+		Role:     "admin",
+	})
+
+	return &srv
 }
 
 func (us *UserService) Create(ctx context.Context, u model.UserInfo) error {

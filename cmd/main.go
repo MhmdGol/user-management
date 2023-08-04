@@ -1,19 +1,24 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"net"
+	"net/http"
 	"os"
+	"time"
 	"user-management/internal/config"
 	"user-management/internal/controller"
+	"user-management/internal/jwtpkg"
 	"user-management/internal/logger"
-	protobuf "user-management/internal/protobuf/user"
+	"user-management/internal/model"
+	"user-management/internal/proto/protoconnect"
 	"user-management/internal/repository/mongo"
 	service "user-management/internal/service/impl"
 	"user-management/internal/store"
 
-	"google.golang.org/grpc"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 func main() {
@@ -42,19 +47,37 @@ func run() error {
 	logger.Info("New database created")
 
 	r := mongo.NewUserRepo(db, logger)
-	as := service.NewAuthService(r, conf.RsaPair)
+	j := jwtpkg.NewJwtHandler(conf.RsaPair)
+	as := service.NewAuthService(r, j)
 	us := service.NewUserService(r, as)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
 
-	uss := controller.NewUserServiceServer(us, as)
+	fmt.Println(as.Login(ctx, model.Username("su"), model.Password("Admin@123")))
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", conf.Port))
-	if err != nil {
-		return err
-	}
+	mux := http.NewServeMux()
+	path, handler := protoconnect.NewUserServiceHandler(&controller.UserServiceServer{
+		UserSrv: us,
+		AuthSrv: as,
+	})
 
-	server := grpc.NewServer()
-	protobuf.RegisterUserServiceServer(server, uss)
+	mux.Handle(path, handler)
+	err = http.ListenAndServe(
+		conf.HttpURI,
+		h2c.NewHandler(mux, &http2.Server{}),
+	)
 
-	err = server.Serve(lis)
+	// uss := controller.NewUserServiceServer(us, as)
+
+	// lis, err := net.Listen("tcp", fmt.Sprintf(":%s", conf.Port))
+	// if err != nil {
+	// 	return err
+	// }
+
+	// server := grpc.NewServer()
+	// protobuf.RegisterUserServiceServer(server, uss)
+
+	// err = server.Serve(lis)
+
 	return err
 }
