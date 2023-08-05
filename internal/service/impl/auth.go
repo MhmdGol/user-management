@@ -72,8 +72,8 @@ func (as *AuthService) UpdatePassword(ctx context.Context, up model.UpdatePasswo
 		return err
 	}
 
-	hOldPass, _ := pkg.HashPassword(string(up.OldPassword))
-	if user.Password != model.HashedPass(hOldPass) {
+	err = pkg.ValidatePassword(string(user.Password), string(up.OldPassword))
+	if err != nil {
 		return fmt.Errorf("not allowed")
 	}
 

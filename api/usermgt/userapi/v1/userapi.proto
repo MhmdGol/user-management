@@ -1,6 +1,8 @@
 syntax = "proto3";
-package usermanagement.v1;
-option go_package = "user-management/internal/proto";
+
+package usermgt.userapi.v1;
+
+option go_package = "usermgt/internal/proto/userapiv1";
 
 service UserService {
     rpc CreateUserService(CreateUserServiceRequest) returns (CreateUserServiceResponse);
@@ -8,11 +10,6 @@ service UserService {
     rpc GetInfoService(GetInfoServiceRequest) returns (GetInfoServiceResponse);
     rpc UpdateByIdService(UpdateByIdServiceRequest) returns (UpdateByIdServiceResponse);
     rpc DeleteByIdService(DeleteByIdServiceRequest) returns (DeleteByIdServiceResponse);
-}
-
-service AuthService {
-    rpc LoginService(LoginServiceRequest) returns (LoginServiceResponse);
-    rpc UpdatePasswordService(UpdatePasswordServiceRequest) returns (UpdatePasswordServiceResponse);
 }
 
 message CreateUserServiceRequest {
@@ -24,15 +21,6 @@ message CreateUserServiceRequest {
 
 message CreateUserServiceResponse {
     bool success = 1;
-}
-
-message LoginServiceRequest {
-    string username = 1;
-    string password = 2;
-}
-
-message LoginServiceResponse {
-    string jwt_token = 1;
 }
 
 message User {
@@ -59,9 +47,10 @@ message GetInfoServiceResponse {
 message UpdateByIdServiceRequest {
     string id = 1;
     string username = 2;
-    string role = 3;
-    string city = 4;
-    int32 version = 5;
+    string password = 3;
+    string role = 4;
+    string city = 5;
+    int32 version = 6;
 }
 
 message UpdateByIdServiceResponse {
@@ -73,15 +62,5 @@ message DeleteByIdServiceRequest {
 }
 
 message DeleteByIdServiceResponse {
-    bool success = 1;
-}
-
-message UpdatePasswordServiceRequest {
-    string username = 1;
-    string old_pass = 2;
-    string new_pass = 3;
-}
-
-message UpdatePasswordServiceResponse {
     bool success = 1;
 }

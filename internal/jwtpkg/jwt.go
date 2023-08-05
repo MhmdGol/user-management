@@ -44,8 +44,8 @@ func NewJwtHandler(conf config.RsaPair) *JwtToken {
 func (j *JwtToken) MakeToken(c model.TokenClaim) (model.JwtToken, error) {
 
 	claims := jwt.MapClaims{
-		"role":     string(c.Username),
-		"username": string(c.Role),
+		"role":     c.Role,
+		"username": c.Username,
 		"exp":      c.ExpirationTime,
 	}
 
@@ -64,8 +64,14 @@ func (j *JwtToken) ExtractClaims(t model.JwtToken) (model.TokenClaim, error) {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		expirationTime := time.Unix(int64(claims["exp"].(float64)), 0)
-		if time.Now().After(expirationTime) {
+		layout := "2006-01-02T15:04:05.9999999-07:00"
+		exp, _ := claims["exp"].(string)
+		parsedTime, err := time.Parse(layout, exp)
+		if err != nil {
+			return model.TokenClaim{}, fmt.Errorf("invalid token")
+		}
+
+		if time.Now().UTC().After(parsedTime) {
 			return model.TokenClaim{}, fmt.Errorf("token has expired")
 		}
 

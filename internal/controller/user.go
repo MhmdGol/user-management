@@ -2,180 +2,218 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"user-management/internal/model"
-	"user-management/internal/proto"
-	"user-management/internal/proto/protoconnect"
+	userapiv1 "user-management/internal/proto/usermgt/userapi/v1"
 	service "user-management/internal/service"
 
-	connect_go "github.com/bufbuild/connect-go"
+	"google.golang.org/genproto/googleapis/rpc/code"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 type UserServiceServer struct {
-	UserSrv service.UserService
-	AuthSrv service.AuthService
+	userSrv service.UserService
+	authSrv service.AuthService
+	userapiv1.UnimplementedUserServiceServer
 }
 
-var _ protoconnect.UserServiceHandler = (*UserServiceServer)(nil)
+func NewUserServiceServer(us service.UserService, as service.AuthService) *UserServiceServer {
+	return &UserServiceServer{
+		userSrv: us,
+		authSrv: as,
+	}
+}
 
-func (c *UserServiceServer) CreateUserService(ctx context.Context, req *connect_go.Request[proto.CreateUserServiceRequest]) (*connect_go.Response[proto.CreateUserServiceResponse], error) {
-	token := req.Header().Values("Authorization")[0]
+var _ userapiv1.UserServiceServer = (*UserServiceServer)(nil)
 
-	role, err := c.AuthSrv.Role(model.JwtToken(token))
+func (s *UserServiceServer) CreateUserService(ctx context.Context, req *userapiv1.CreateUserServiceRequest) (*userapiv1.CreateUserServiceResponse, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return &userapiv1.CreateUserServiceResponse{
+			Success: false,
+		}, status.Error(codes.Code(code.Code_UNAUTHENTICATED), "missing token")
+	}
+
+	token, found := md["authorization"]
+	if !found {
+		return &userapiv1.CreateUserServiceResponse{
+			Success: false,
+		}, status.Error(codes.Code(code.Code_UNAUTHENTICATED), "missing token")
+	}
+
+	role, err := s.authSrv.Role(model.JwtToken(token[0]))
 	if err != nil {
-		return &connect_go.Response[proto.CreateUserServiceResponse]{
-			Msg: &proto.CreateUserServiceResponse{
-				Success: false,
-			},
-		}, connect_go.NewError(connect_go.Code(16), err)
+		return &userapiv1.CreateUserServiceResponse{
+			Success: false,
+		}, status.Error(codes.Code(code.Code_UNAUTHENTICATED), "missing token")
 	}
 
-	if string(role) != "admin" {
-		return &connect_go.Response[proto.CreateUserServiceResponse]{
-			Msg: &proto.CreateUserServiceResponse{
-				Success: false,
-			},
-		}, connect_go.NewError(connect_go.Code(7), fmt.Errorf("not admin"))
+	if role != "admin" {
+		return &userapiv1.CreateUserServiceResponse{
+			Success: false,
+		}, status.Error(codes.Code(code.Code_PERMISSION_DENIED), "not allowed")
 	}
 
-	err = c.UserSrv.Create(ctx, model.UserInfo{
-		Username: model.Username(req.Msg.Username),
-		Password: model.Password(req.Msg.Password),
-		Role:     model.Role(req.Msg.Role),
-		City:     req.Msg.City,
+	user := model.UserInfo{
+		Username: model.Username(req.Username),
+		Password: model.Password(req.Password),
+		Role:     model.Role(req.Role),
+		City:     req.City,
+	}
+
+	err = s.userSrv.Create(ctx, user)
+	if err != nil {
+		return &userapiv1.CreateUserServiceResponse{
+			Success: false,
+		}, status.Error(codes.Code(code.Code_ALREADY_EXISTS), "not created")
+	}
+
+	return &userapiv1.CreateUserServiceResponse{
+		Success: true,
+	}, status.Error(codes.Code(code.Code_OK), "created")
+}
+
+func (s *UserServiceServer) GetAllUsersService(ctx context.Context, req *userapiv1.GetAllUsersServiceRequest) (*userapiv1.GetAllUsersServiceResponse, error) {
+	users, err := s.userSrv.All(ctx)
+	if err != nil {
+		return &userapiv1.GetAllUsersServiceResponse{},
+			status.Error(codes.Code(code.Code_INTERNAL), "not read")
+	}
+
+	result := make([]*userapiv1.User, len(users))
+	for i, u := range users {
+		result[i] = &userapiv1.User{
+			Id:             string(u.ID),
+			Username:       string(u.Username),
+			TimeOfCreation: u.TimeOfCreation.String(),
+			Role:           string(u.Role),
+			City:           u.City,
+			Version:        int32(u.Version),
+		}
+	}
+	return &userapiv1.GetAllUsersServiceResponse{
+		Users: result,
+	}, status.Error(codes.Code(code.Code_OK), "read")
+}
+
+func (s *UserServiceServer) GetInfoService(ctx context.Context, req *userapiv1.GetInfoServiceRequest) (*userapiv1.GetInfoServiceResponse, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return &userapiv1.GetInfoServiceResponse{}, status.Error(codes.Code(code.Code_UNAUTHENTICATED), "missing token")
+	}
+
+	token, found := md["authorization"]
+	if !found {
+		return &userapiv1.GetInfoServiceResponse{}, status.Error(codes.Code(code.Code_UNAUTHENTICATED), "missing token")
+	}
+
+	username, err := s.authSrv.Username(model.JwtToken(token[0]))
+	if err != nil {
+		return &userapiv1.GetInfoServiceResponse{}, status.Error(codes.Code(code.Code_UNAUTHENTICATED), "missing token")
+	}
+
+	u, err := s.userSrv.ReadByUsername(ctx, username)
+	if err != nil {
+		return &userapiv1.GetInfoServiceResponse{}, status.Error(codes.Code(code.Code_INTERNAL), "not read")
+	}
+
+	return &userapiv1.GetInfoServiceResponse{
+		User: &userapiv1.User{
+			Id:             string(u.ID),
+			Username:       string(u.Username),
+			TimeOfCreation: u.TimeOfCreation.String(),
+			Role:           string(u.Role),
+			City:           u.City,
+			Version:        int32(u.Version),
+		},
+	}, status.Error(codes.Code(code.Code_OK), "read")
+}
+
+func (s *UserServiceServer) UpdateByIdService(ctx context.Context, req *userapiv1.UpdateByIdServiceRequest) (*userapiv1.UpdateByIdServiceResponse, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return &userapiv1.UpdateByIdServiceResponse{
+			Success: false,
+		}, status.Error(codes.Code(code.Code_UNAUTHENTICATED), "missing token")
+	}
+
+	token, found := md["authorization"]
+	if !found {
+		return &userapiv1.UpdateByIdServiceResponse{
+			Success: false,
+		}, status.Error(codes.Code(code.Code_UNAUTHENTICATED), "missing token")
+	}
+
+	role, err := s.authSrv.Role(model.JwtToken(token[0]))
+	if err != nil {
+		return &userapiv1.UpdateByIdServiceResponse{
+			Success: false,
+		}, status.Error(codes.Code(code.Code_UNAUTHENTICATED), "missing token")
+	}
+
+	if role != "admin" && role != "staff" {
+		return &userapiv1.UpdateByIdServiceResponse{
+			Success: false,
+		}, status.Error(codes.Code(code.Code_PERMISSION_DENIED), "not allowed")
+	}
+
+	err = s.userSrv.UpdateByID(ctx, model.ID(req.Id), model.UserInfo{
+		Username: model.Username(req.Username),
+		Password: model.Password(req.Password),
+		Role:     model.Role(req.Role),
+		City:     req.City,
+		Version:  int(req.Version),
 	})
 	if err != nil {
-		return &connect_go.Response[proto.CreateUserServiceResponse]{
-			Msg: &proto.CreateUserServiceResponse{
-				Success: false,
-			},
-		}, connect_go.NewError(connect_go.Code(3), err)
+		return &userapiv1.UpdateByIdServiceResponse{
+			Success: false,
+		}, status.Error(codes.Code(code.Code_INTERNAL), "not updated")
 	}
 
-	return &connect_go.Response[proto.CreateUserServiceResponse]{
-		Msg: &proto.CreateUserServiceResponse{
+	return &userapiv1.UpdateByIdServiceResponse{
+		Success: true,
+	}, status.Error(codes.Code(code.Code_OK), "updated")
+
+}
+
+func (s *UserServiceServer) DeleteByIdService(ctx context.Context, req *userapiv1.DeleteByIdServiceRequest) (*userapiv1.DeleteByIdServiceResponse, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return &userapiv1.DeleteByIdServiceResponse{
 			Success: false,
-		},
-	}, nil
+		}, status.Error(codes.Code(code.Code_UNAUTHENTICATED), "missing token")
+	}
+
+	token, found := md["authorization"]
+	if !found {
+		return &userapiv1.DeleteByIdServiceResponse{
+			Success: false,
+		}, status.Error(codes.Code(code.Code_UNAUTHENTICATED), "missing token")
+	}
+
+	role, err := s.authSrv.Role(model.JwtToken(token[0]))
+	if err != nil {
+		return &userapiv1.DeleteByIdServiceResponse{
+			Success: false,
+		}, status.Error(codes.Code(code.Code_UNAUTHENTICATED), "missing token")
+	}
+
+	if role != "admin" {
+		return &userapiv1.DeleteByIdServiceResponse{
+			Success: false,
+		}, status.Error(codes.Code(code.Code_PERMISSION_DENIED), "not allowed")
+	}
+
+	err = s.userSrv.DeleteByID(ctx, model.ID(req.Id))
+	if err != nil {
+		return &userapiv1.DeleteByIdServiceResponse{
+			Success: false,
+		}, status.Error(codes.Code(code.Code_INTERNAL), "not deleted")
+	}
+
+	return &userapiv1.DeleteByIdServiceResponse{
+		Success: true,
+	}, status.Error(codes.Code(code.Code_OK), "deleted")
+
 }
-
-func (c *UserServiceServer) GetAllUsersService(ctx context.Context, req *connect_go.Request[proto.GetAllUsersServiceRequest]) (*connect_go.Response[proto.GetAllUsersServiceResponse], error) {
-	return nil, nil
-}
-
-func (c *UserServiceServer) GetInfoService(ctx context.Context, req *connect_go.Request[proto.GetInfoServiceRequest]) (*connect_go.Response[proto.GetInfoServiceResponse], error) {
-	return nil, nil
-}
-
-func (c *UserServiceServer) UpdateByIdService(ctx context.Context, req *connect_go.Request[proto.UpdateByIdServiceRequest]) (*connect_go.Response[proto.UpdateByIdServiceResponse], error) {
-	return nil, nil
-}
-
-func (c *UserServiceServer) DeleteByIdService(ctx context.Context, req *connect_go.Request[proto.DeleteByIdServiceRequest]) (*connect_go.Response[proto.DeleteByIdServiceResponse], error) {
-	return nil, nil
-}
-
-// func (s *UserServiceServer) Create(ctx context.Context, req *protobuf.UserRequest) (*protobuf.Response, error) {
-// 	user := model.User{
-// 		Username: req.Username,
-// 		Password: req.Password,
-// 		Role:     model.Role(req.Role),
-// 		City:     req.City,
-// 	}
-
-// 	token := model.JwtToken{
-// 		Token: req.Token.Token,
-// 	}
-
-// 	err := s.userSrv.Create(user, token)
-
-// 	return &protobuf.Response{
-// 		Success: true,
-// 	}, err
-// }
-
-// func (s *UserServiceServer) Login(ctx context.Context, req *protobuf.LoginInfo) (*protobuf.JwtToken, error) {
-// 	login := model.LoginRequest{
-// 		Username: req.Username,
-// 		Password: req.Password,
-// 	}
-
-// 	token, err := s.authSrv.Login(login)
-
-// 	return &protobuf.JwtToken{
-// 		Token: token.Token,
-// 	}, err
-// }
-
-// func (s *UserServiceServer) All(ctx context.Context, req *protobuf.Empty) (*protobuf.Users, error) {
-// 	users, _ := s.userSrv.All()
-
-// 	result := make([]*protobuf.User, len(users))
-// 	for i, u := range users {
-// 		result[i] = &protobuf.User{
-// 			Id:             string(u.ID),
-// 			Username:       u.Username,
-// 			Password:       u.Password,
-// 			TimeOfCreation: u.TimeOfCreation.String(),
-// 			Role:           string(u.Role),
-// 			City:           u.City,
-// 			Version:        int32(u.Version),
-// 		}
-// 	}
-// 	return &protobuf.Users{
-// 		Users: result,
-// 	}, nil
-// }
-
-// func (s *UserServiceServer) ReadByUsername(ctx context.Context, req *protobuf.Username) (*protobuf.User, error) {
-// 	u, _ := s.userSrv.ReadByUsername(model.User{Username: req.Username})
-
-// 	return &protobuf.User{
-// 		Id:             string(u.ID),
-// 		Username:       u.Username,
-// 		Password:       u.Password,
-// 		TimeOfCreation: u.TimeOfCreation.String(),
-// 		Role:           string(u.Role),
-// 		City:           u.City,
-// 		Version:        int32(u.Version),
-// 	}, nil
-// }
-
-// func (s *UserServiceServer) UpdateByID(ctx context.Context, up *protobuf.Update) (*protobuf.Response, error) {
-// 	s.userSrv.UpdateByID(model.User{
-// 		ID:       model.ID(up.User.Id),
-// 		Username: up.User.Username,
-// 		Password: up.User.Password,
-// 		Role:     model.Role(up.User.Role),
-// 		City:     up.User.City,
-// 		Version:  int(up.User.Version),
-// 	}, model.JwtToken{
-// 		Token: up.Token.Token,
-// 	})
-
-// 	return &protobuf.Response{
-// 		Success: true,
-// 	}, nil
-// }
-
-// func (s *UserServiceServer) DeleteByID(ctx context.Context, de *protobuf.Delete) (*protobuf.Response, error) {
-// 	s.userSrv.DeleteByID(model.ID(de.Id.Id), model.JwtToken{
-// 		Token: de.Token.Token,
-// 	})
-
-// 	return &protobuf.Response{
-// 		Success: true,
-// 	}, nil
-// }
-
-// func (s *UserServiceServer) UpdatePassword(ctx context.Context, upass *protobuf.UpdatePass) (*protobuf.Response, error) {
-// 	s.authSrv.UpdatePassword(model.UpdatePassword{
-// 		Username:    upass.Username,
-// 		OldPassword: upass.Oldpass,
-// 		NewPassword: upass.Newpass,
-// 	})
-
-// 	return &protobuf.Response{
-// 		Success: true,
-// 	}, nil
-// }

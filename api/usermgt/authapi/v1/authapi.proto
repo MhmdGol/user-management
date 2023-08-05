@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package usermgt.authapi.v1;
+
+option go_package = "usermgt/internal/proto/authapiv1";
+
+service AuthService {
+    rpc LoginService(LoginServiceRequest) returns (LoginServiceResponse);
+    rpc UpdatePasswordService(UpdatePasswordServiceRequest) returns (UpdatePasswordServiceResponse);
+}
+
+message UpdatePasswordServiceRequest {
+    string username = 1;
+    string old_pass = 2;
+    string new_pass = 3;
+}
+
+message UpdatePasswordServiceResponse {
+    bool success = 1;
+}
+
+message LoginServiceRequest {
+    string username = 1;
+    string password = 2;
+}
+
+message LoginServiceResponse {
+    string jwt_token = 1;
+}

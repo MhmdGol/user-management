@@ -1,24 +1,21 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
-	"net/http"
+	"net"
 	"os"
-	"time"
 	"user-management/internal/config"
 	"user-management/internal/controller"
 	"user-management/internal/jwtpkg"
 	"user-management/internal/logger"
-	"user-management/internal/model"
-	"user-management/internal/proto/protoconnect"
+	authapiv1 "user-management/internal/proto/usermgt/authapi/v1"
+	userapiv1 "user-management/internal/proto/usermgt/userapi/v1"
 	"user-management/internal/repository/mongo"
 	service "user-management/internal/service/impl"
 	"user-management/internal/store"
 
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -48,36 +45,23 @@ func run() error {
 
 	r := mongo.NewUserRepo(db, logger)
 	j := jwtpkg.NewJwtHandler(conf.RsaPair)
+
 	as := service.NewAuthService(r, j)
 	us := service.NewUserService(r, as)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
 
-	fmt.Println(as.Login(ctx, model.Username("su"), model.Password("Admin@123")))
+	uss := controller.NewUserServiceServer(us, as)
+	ass := controller.NewAuthServiceServer(us, as)
 
-	mux := http.NewServeMux()
-	path, handler := protoconnect.NewUserServiceHandler(&controller.UserServiceServer{
-		UserSrv: us,
-		AuthSrv: as,
-	})
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", conf.Port))
+	if err != nil {
+		return err
+	}
 
-	mux.Handle(path, handler)
-	err = http.ListenAndServe(
-		conf.HttpURI,
-		h2c.NewHandler(mux, &http2.Server{}),
-	)
+	server := grpc.NewServer()
+	userapiv1.RegisterUserServiceServer(server, uss)
+	authapiv1.RegisterAuthServiceServer(server, ass)
 
-	// uss := controller.NewUserServiceServer(us, as)
-
-	// lis, err := net.Listen("tcp", fmt.Sprintf(":%s", conf.Port))
-	// if err != nil {
-	// 	return err
-	// }
-
-	// server := grpc.NewServer()
-	// protobuf.RegisterUserServiceServer(server, uss)
-
-	// err = server.Serve(lis)
+	err = server.Serve(lis)
 
 	return err
 }
