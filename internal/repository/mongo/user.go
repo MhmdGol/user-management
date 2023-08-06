@@ -2,7 +2,6 @@ package mongo
 
 import (
 	"context"
-	"fmt"
 	"user-management/internal/model"
 	"user-management/internal/repository"
 	"user-management/internal/repository/mongo/transaction"
@@ -34,29 +33,34 @@ func NewUserRepo(db *mongo.Database, cl *mongo.Client, logger *zap.Logger) *User
 func (ur *UserRepository) Create(ctx context.Context, u model.User) error {
 	ur.logger.Info("creating new user")
 
-	session, err := ur.cl.StartSession()
+	// session, err := ur.cl.StartSession()
+	// if err != nil {
+	// 	ur.logger.Info("user creation failed")
+	// 	return err
+	// }
+	// defer session.EndSession(ctx)
+
+	// transactionCtx := mongo.NewSessionContext(ctx, session)
+
+	// if err := session.StartTransaction(); err != nil {
+	// 	ur.logger.Info("user creation failed")
+	// 	return err
+	// }
+
+	// if err := transaction.CreateTransaction(transactionCtx, u, ur.db.Collection("users")); err != nil {
+	// 	ur.logger.Info("transaction failed")
+	// 	session.AbortTransaction(ctx)
+	// 	fmt.Println(err)
+	// } else {
+	// 	ur.logger.Info("transaction completed")
+	// 	session.CommitTransaction(ctx)
+	// }
+
+	err := transaction.CreateTransaction(ctx, u, ur.db.Collection("users"))
 	if err != nil {
-		ur.logger.Info("user creation failed")
-		return err
+		ur.logger.Info("user not inserted")
 	}
-	defer session.EndSession(ctx)
-
-	transactionCtx := mongo.NewSessionContext(ctx, session)
-
-	if err := session.StartTransaction(); err != nil {
-		ur.logger.Info("user creation failed")
-		return err
-	}
-
-	if err := transaction.CreateTransaction(transactionCtx, u, ur.db.Collection("users")); err != nil {
-		ur.logger.Info("transaction failed")
-		session.AbortTransaction(ctx)
-		fmt.Println(err)
-	} else {
-		ur.logger.Info("transaction completed")
-		session.CommitTransaction(ctx)
-	}
-	return nil
+	return err
 }
 
 func (ur *UserRepository) All(ctx context.Context) ([]model.User, error) {

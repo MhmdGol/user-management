@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 	"user-management/internal/config"
+	"user-management/internal/dbmigrate"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -21,5 +22,7 @@ func NewMongoStorage(conf config.MongoDtabaseConfig, logger *zap.Logger) (*mongo
 	}
 	logger.Info("Mongo storage connected")
 
-	return client, client.Database(conf.Name), nil
+	client.Database(conf.DbName).CreateCollection(ctx, conf.CollectionName, dbmigrate.UsersSchema())
+
+	return client, client.Database(conf.DbName), nil
 }

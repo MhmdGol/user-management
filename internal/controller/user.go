@@ -163,7 +163,7 @@ func (s *UserServiceServer) UpdateByIdService(ctx context.Context, req *userapiv
 		Password: model.Password(req.Password),
 		Role:     model.Role(req.Role),
 		City:     req.City,
-		Version:  int(req.Version),
+		Version:  int32(req.Version),
 	})
 	if err != nil {
 		return &userapiv1.UpdateByIdServiceResponse{

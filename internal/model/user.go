@@ -9,7 +9,7 @@ type User struct {
 	Role           Role
 	TimeOfCreation time.Time
 	City           string
-	Version        int
+	Version        int32
 }
 
 type UserInfo struct {
@@ -19,5 +19,5 @@ type UserInfo struct {
 	Role           Role
 	TimeOfCreation time.Time
 	City           string
-	Version        int
+	Version        int32
 }

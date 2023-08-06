@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"context"
+	"fmt"
 	"time"
 	"user-management/internal/model"
 	"user-management/internal/repository/mongo/mongomodel"
@@ -28,8 +29,9 @@ func CreateTransaction(ctx context.Context, u model.User, collection *mongo.Coll
 		Version:        1,
 	}
 
-	_, err = collection.InsertOne(ctx, &user)
+	_, err = collection.InsertOne(ctx, user)
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
 

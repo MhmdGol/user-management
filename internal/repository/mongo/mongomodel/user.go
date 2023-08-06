@@ -13,5 +13,5 @@ type User struct {
 	Role           string             `bson:"role"`
 	TimeOfCreation time.Time          `bson:"timeOfCreation"`
 	City           string             `bson:"city"`
-	Version        int                `bson:"version"`
+	Version        int32              `bson:"version"`
 }

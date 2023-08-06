@@ -15,8 +15,9 @@ type RsaPair struct {
 }
 
 type MongoDtabaseConfig struct {
-	URI  string `mapstructure:"MONGO_DATABASE_URI"`
-	Name string `mapstructure:"MONGO_DATABASE_NAME"`
+	URI            string `mapstructure:"MONGO_DATABASE_URI"`
+	DbName         string `mapstructure:"MONGO_DATABASE_NAME"`
+	CollectionName string `mapstructure:"MONGO_COLLECTION_NAME"`
 }
 
 func Load() (Config, error) {
@@ -33,6 +34,7 @@ func Load() (Config, error) {
 	viper.BindEnv("PUBLIC_KEY_PATH")
 	viper.BindEnv("MONGO_DATABASE_URI")
 	viper.BindEnv("MONGO_DATABASE_NAME")
+	viper.BindEnv("MONGO_COLLECTION_NAME")
 
 	var c Config
 	err := viper.Unmarshal(&c)
