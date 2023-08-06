@@ -37,13 +37,13 @@ func run() error {
 	}
 	logger.Info("Config loaded")
 
-	db, err := store.NewMongoStorage(conf.MongoDtabaseConfig, logger)
+	cl, db, err := store.NewMongoStorage(conf.MongoDtabaseConfig, logger)
 	if err != nil {
 		logger.Info("New database creation failure")
 	}
 	logger.Info("New database created")
 
-	r := mongo.NewUserRepo(db, logger)
+	r := mongo.NewUserRepo(db, cl, logger)
 	j := jwtpkg.NewJwtHandler(conf.RsaPair)
 
 	as := service.NewAuthService(r, j)
